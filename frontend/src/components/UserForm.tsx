@@ -4,7 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { UserOut } from "../api/generated";
 import { zUserCreate } from "../api/generated/zod.gen";
-
+import type { UserField } from "../api/api-errors";
 export type UserFormValues = z.infer<typeof zUserCreate>;
 
 type UserFormProps = {
@@ -12,6 +12,8 @@ type UserFormProps = {
   onSave: (values: UserFormValues) => Promise<void>;
   onCancel: () => void;
   submitting: boolean;
+  serverErrors: Partial<Record<UserField, string>>;
+  onClearServerError: (field: UserField) => void;
 };
 
 export default function UserForm({
@@ -19,6 +21,8 @@ export default function UserForm({
   onSave,
   onCancel,
   submitting,
+  serverErrors,
+  onClearServerError,
 }: UserFormProps) {
   const {
     register,
@@ -50,11 +54,16 @@ export default function UserForm({
         <label htmlFor="name">Name</label>
         <input
           id="name"
-          {...register("name")}
-          placeholder="John Doe"
-          aria-invalid={Boolean(errors.name)}
+          {...register("name", {
+            onChange: () => onClearServerError("name"),
+          })}
+          aria-invalid={Boolean(errors.name || serverErrors.name)}
         />
-        {errors.name && <p className="field-error">{errors.name.message}</p>}
+        {(errors.name?.message || serverErrors.name) && (
+          <p className="field-error">
+            {errors.name?.message ?? serverErrors.name}
+          </p>
+        )}
       </div>
 
       <div className="form-field">
@@ -62,17 +71,31 @@ export default function UserForm({
         <input
           id="email"
           type="email"
-          {...register("email")}
-          placeholder="john@example.com"
-          aria-invalid={Boolean(errors.email)}
+          {...register("email", {
+            onChange: () => onClearServerError("email"),
+          })}
+          aria-invalid={Boolean(errors.email || serverErrors.email)}
         />
-        {errors.email && <p className="field-error">{errors.email.message}</p>}
+        {(errors.email?.message || serverErrors.email) && (
+          <p className="field-error">
+            {errors.email?.message ?? serverErrors.email}
+          </p>
+        )}
       </div>
 
       <label className="checkbox-field">
-        <input type="checkbox" {...register("is_active")} />
+        <input
+          type="checkbox"
+          {...register("is_active", {
+            onChange: () => onClearServerError("is_active"),
+          })}
+        />
         Active user
       </label>
+
+      {serverErrors.is_active && (
+        <p className="field-error">{serverErrors.is_active}</p>
+      )}
 
       <div className="form-actions">
         <button type="submit" disabled={submitting}>

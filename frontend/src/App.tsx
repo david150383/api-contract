@@ -7,6 +7,7 @@ import {
 } from "./api/generated";
 import type { UserOut } from "./api/generated";
 import UserForm, { type UserFormValues } from "./components/UserForm";
+import { parseApiError, type UserField } from "./api/api-errors";
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -28,6 +29,13 @@ function getErrorMessage(error: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
+function clearServerError(field: UserField) {
+  setServerErrors((current) => ({
+    ...current,
+    [field]: undefined,
+  }));
+}
+
 export default function App() {
   const [users, setUsers] = useState<UserOut[]>([]);
   const [editingUser, setEditingUser] = useState<UserOut | null>(null);
@@ -36,6 +44,9 @@ export default function App() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [serverErrors, setServerErrors] = useState<
+    Partial<Record<UserField, string>>
+  >({});
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -64,35 +75,38 @@ export default function App() {
     setSubmitting(true);
     setError(null);
     setSuccess(null);
+    setServerErrors({});
 
     try {
-      if (editingUser) {
-        const response = await updateUser({
-          path: { user_id: editingUser.id },
-          body: values,
-        });
+      const response = editingUser
+        ? await updateUser({
+            path: { user_id: editingUser.id },
+            body: values,
+          })
+        : await createUser({
+            body: values,
+          });
 
-        if (response.error) {
-          throw new Error(getErrorMessage(response.error));
-        }
+      if (response.error) {
+        const apiError = parseApiError(response.error);
 
-        setSuccess("User updated successfully.");
-        setEditingUser(null);
-      } else {
-        const response = await createUser({
-          body: values,
-        });
-
-        if (response.error) {
-          throw new Error(getErrorMessage(response.error));
-        }
-
-        setSuccess("User created successfully.");
+        setServerErrors(apiError.fieldErrors);
+        setError(apiError.message);
+        return;
       }
 
+      setSuccess(
+        editingUser
+          ? "User updated successfully."
+          : "User created successfully.",
+      );
+
+      setEditingUser(null);
       await loadUsers();
     } catch (err) {
-      setError(getErrorMessage(err));
+      const apiError = parseApiError(err);
+      setServerErrors(apiError.fieldErrors);
+      setError(apiError.message);
     } finally {
       setSubmitting(false);
     }
@@ -171,6 +185,8 @@ export default function App() {
           onSave={handleSave}
           onCancel={() => setEditingUser(null)}
           submitting={submitting}
+          serverErrors={serverErrors}
+          onClearServerError={clearServerError}
         />
       </section>
 
