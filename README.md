@@ -92,4 +92,23 @@ export default defineConfig({
 ```
 
 ### Add a script to the scripts section of frontend/package.json:
+```
+"generate:api": "openapi-ts"
+```
+Keep the existing Vite scripts; just add this entry.
 
+Now run:
+```
+npm run generate:api
+```
+
+The generator reads the live OpenAPI document and writes TypeScript files into src/api/generated. The SDK plugin generates API methods, while the TypeScript plugin generates the associated types.
+
+Your generated output will include equivalents of:
+- A listUsers API method.
+- A createUser API method.
+- An updateUser API method.
+- A deleteUser API method.
+- TypeScript types for request payloads and response models.
+
+The exact generated filenames and exported symbols depend on the generator version and configuration. **Don't create or edit these files manually.** Inspect the generated exports after running the command.
