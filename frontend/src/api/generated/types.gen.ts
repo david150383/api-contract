@@ -26,6 +26,10 @@ export type UserCreate = {
      * Email
      */
     email: string;
+    /**
+     * Is Active
+     */
+    is_active?: boolean;
 };
 
 /**

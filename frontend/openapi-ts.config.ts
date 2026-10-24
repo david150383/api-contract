@@ -5,5 +5,5 @@ export default defineConfig({
   output: {
     path: "src/api/generated",
   },
-  plugins: ["@hey-api/typescript", "@hey-api/sdk"],
+  plugins: ["@hey-api/typescript", "@hey-api/sdk", "zod"],
 });

@@ -3,14 +3,9 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { UserOut } from "../api/generated";
+import { zUserCreate } from "../api/generated/zod.gen";
 
-const userSchema = z.object({
-  name: z.string().trim().min(2, "Name must contain at least 2 characters"),
-  email: z.email("Enter a valid email address"),
-  is_active: z.boolean(),
-});
-
-export type UserFormValues = z.infer<typeof userSchema>;
+export type UserFormValues = z.infer<typeof zUserCreate>;
 
 type UserFormProps = {
   user?: UserOut | null;
@@ -31,7 +26,7 @@ export default function UserForm({
     reset,
     formState: { errors },
   } = useForm<UserFormValues>({
-    resolver: zodResolver(userSchema),
+    resolver: zodResolver(zUserCreate),
     defaultValues: {
       name: "",
       email: "",
