@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 class UserCreate(BaseModel):
     name: str = Field(min_length=2, max_length=100)
     email: EmailStr
+    is_active: bool = True
 
 
 class UserUpdate(BaseModel):

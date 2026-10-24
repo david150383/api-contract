@@ -138,3 +138,42 @@ When you use the UI, the requests should be:
 One important detail: if TypeScript reports that an operation doesn't accept `path` or `body`, or that `response.data` doesn't exist, don't suppress the error. The generated `sdk.gen.ts` and `types.gen.ts` define the exact contract for your installed generator. Share the relevant generated function signature, and we can align the code precisely.
 
 Production note: this is a solid learning implementation. Before deploying it, add authentication and authorization, avoid exposing internal server errors to users, and handle concurrent requests and duplicate submissions appropriately.
+
+## Generate zod schema dynamically using backend OpenAPI contract.
+You may notice, we are using Zod schema in frontend for frontend validation, see UserForm.tsx 
+```
+const userSchema = z.object({
+  name: z.string().trim().min(2, "Name must contain at least 2 characters"),
+  email: z.email("Enter a valid email address"),
+  is_active: z.boolean(),
+});
+
+export type UserFormValues = z.infer<typeof userSchema>;
+```
+We can also generate this schema using backend openapi specification
+
+Right now, we maintained these rules in two places:
+- FastAPI/Pydantic: backend validation.
+- React/Zod: manually written frontend validation.
+
+Let's create a new branch `dynamic-zod-schema` and see.
+
+1. Update openapi-ts.config.ts
+Just add `zod` in plugins list.
+
+2. Regenerate the client
+Make sure FastAPI is running, then run this in your frontend directory:
+```
+npm run generate:api
+```
+
+The generated schema will likely be named zUserCreate, following the plugin's default naming convention. Confirm the actual name in your generated output before importing it.
+
+3. Update UserForm.tsx
+- remove userSchema and use zUserCreate in place of it
+
+With generated schemas, you can derive the frontend's supported validation rules from the OpenAPI contract.
+
+One caveat: OpenAPI can only convey rules it actually describes. For example, if your Pydantic model doesn't specify a minimum name length, the generated Zod schema won't invent one. Database uniqueness and business rules must still be enforced by FastAPI.
+
+For see updated code, checkout to `dynamic-zod-schema` branch and start both fontend and backend.
