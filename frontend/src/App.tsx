@@ -1,122 +1,255 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useCallback, useEffect, useState } from "react";
+import {
+  createUser,
+  deleteUser as deleteUserApi,
+  listUsers,
+  updateUser,
+} from "./api/generated";
+import type { UserOut } from "./api/generated";
+import UserForm, { type UserFormValues } from "./components/UserForm";
 
-function App() {
-  const [count, setCount] = useState(0)
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+  if (typeof error === "string") {
+    return error;
+  }
 
-      <div className="ticks"></div>
+  if (error && typeof error === "object" && "detail" in error) {
+    const detail = error.detail;
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+    if (typeof detail === "string") {
+      return detail;
+    }
+  }
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+  return "Something went wrong. Please try again.";
 }
 
-export default App
+export default function App() {
+  const [users, setUsers] = useState<UserOut[]>([]);
+  const [editingUser, setEditingUser] = useState<UserOut | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const loadUsers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await listUsers();
+
+      if (response.error) {
+        throw new Error(getErrorMessage(response.error));
+      }
+
+      setUsers(response.data ?? []);
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadUsers();
+  }, [loadUsers]);
+
+  async function handleSave(values: UserFormValues) {
+    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      if (editingUser) {
+        const response = await updateUser({
+          path: { user_id: editingUser.id },
+          body: values,
+        });
+
+        if (response.error) {
+          throw new Error(getErrorMessage(response.error));
+        }
+
+        setSuccess("User updated successfully.");
+        setEditingUser(null);
+      } else {
+        const response = await createUser({
+          body: values,
+        });
+
+        if (response.error) {
+          throw new Error(getErrorMessage(response.error));
+        }
+
+        setSuccess("User created successfully.");
+      }
+
+      await loadUsers();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDelete(user: UserOut) {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${user.name}?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingId(user.id);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await deleteUserApi({
+        path: { user_id: user.id },
+      });
+
+      if (response.error) {
+        throw new Error(getErrorMessage(response.error));
+      }
+
+      if (editingUser?.id === user.id) {
+        setEditingUser(null);
+      }
+
+      setSuccess("User deleted successfully.");
+      await loadUsers();
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  return (
+    <main className="container">
+      <header className="page-header">
+        <div>
+          <h1>User Management</h1>
+          <p>Manage users through your FastAPI backend.</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            setEditingUser(null);
+            setError(null);
+            setSuccess(null);
+          }}
+        >
+          + New user
+        </button>
+      </header>
+
+      {error && (
+        <div className="alert error-alert" role="alert">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="alert success-alert" role="status">
+          {success}
+        </div>
+      )}
+
+      <section className="form-panel">
+        <UserForm
+          user={editingUser}
+          onSave={handleSave}
+          onCancel={() => setEditingUser(null)}
+          submitting={submitting}
+        />
+      </section>
+
+      <section className="users-section">
+        <div className="section-header">
+          <h2>Users</h2>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => void loadUsers()}
+            disabled={loading}
+          >
+            Refresh
+          </button>
+        </div>
+
+        {loading ? (
+          <p>Loading users...</p>
+        ) : users.length === 0 ? (
+          <p>No users found. Create your first user above.</p>
+        ) : (
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {users.map((user) => (
+                  <tr key={user.id}>
+                    <td>{user.id}</td>
+                    <td>{user.name}</td>
+                    <td>{user.email}</td>
+                    <td>
+                      <span
+                        className={
+                          user.is_active ? "status active" : "status inactive"
+                        }
+                      >
+                        {user.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="row-actions">
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={() => {
+                            setEditingUser(user);
+                            setError(null);
+                            setSuccess(null);
+                          }}
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          type="button"
+                          className="danger-button"
+                          onClick={() => void handleDelete(user)}
+                          disabled={deletingId === user.id}
+                        >
+                          {deletingId === user.id ? "Deleting..." : "Delete"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}

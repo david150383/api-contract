@@ -83,11 +83,7 @@ export default defineConfig({
   output: {
     path: "src/api/generated",
   },
-  client: "@hey-api/client-fetch",
-  plugins: [
-    "@hey-api/typescript",
-    "@hey-api/sdk",
-  ],
+  plugins: ["@hey-api/typescript", "@hey-api/sdk"],
 });
 ```
 
@@ -112,3 +108,33 @@ Your generated output will include equivalents of:
 - TypeScript types for request payloads and response models.
 
 The exact generated filenames and exported symbols depend on the generator version and configuration. **Don't create or edit these files manually.** Inspect the generated exports after running the command.
+
+### Update react code to use react hook form and client sdk
+1. **Create** `src/components/UserForm.tsx`
+2. **Replace** `src/App.tsx`
+3. **Replace** `src/index.css`
+
+### Run the application
+```
+cd backend
+python -m uvicorn app.main:app --reload
+
+cd frontend
+npm run dev
+```
+Open the Vite URL, usually `http://localhost:5173`.
+
+### How to verify the generated SDK is working
+
+When you use the UI, the requests should be:
+
+| UI action   | Generated function | HTTP request              |
+| ----------- | ------------------ | ------------------------- |
+| Load users  | `listUsers()`      | `GET /users`              |
+| Create user | `createUser()`     | `POST /users`             |
+| Edit user   | `updateUser()`     | `PUT /users/{user_id}`    |
+| Delete user | `deleteUserApi()`  | `DELETE /users/{user_id}` |
+
+One important detail: if TypeScript reports that an operation doesn't accept `path` or `body`, or that `response.data` doesn't exist, don't suppress the error. The generated `sdk.gen.ts` and `types.gen.ts` define the exact contract for your installed generator. Share the relevant generated function signature, and we can align the code precisely.
+
+Production note: this is a solid learning implementation. Before deploying it, add authentication and authorization, avoid exposing internal server errors to users, and handle concurrent requests and duplicate submissions appropriately.
