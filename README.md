@@ -437,3 +437,26 @@ Once you create pull request for master, Github action Ci get started and fail d
 ![Ci Failed](1.png)
 
 ![Ci Failed](2.png)
+
+## Let's do check number 2. Frontend type-check and build
+
+Your current change renames name to first_name. To test frontend type-checking:
+1. Keep the backend change in your test branch.
+2. make sure you are in test branch
+3. Regenerate the frontend API files from the updated OpenAPI contract.
+```
+cd frontend
+npm run generate:api
+```
+4. Do not update the React form that still references name.
+5. Run these commands in frontend:
+```
+npx tsc --noEmit
+npm run build
+```
+If your form uses generated types or schemas correctly, TypeScript should flag references that no longer match the generated contract. The build may also fail if those errors affect compilation.
+
+Note that this only works when the affected frontend code actually depends on the generated types. A manually defined form schema can hide some contract drift.
+
+When you run above `npm run build` command in frontend it will show errors
+![build Failed](3.png)
