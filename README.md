@@ -463,3 +463,126 @@ When you run above `npm run build` command in frontend it will show errors
 
 ## Let's do check number 3. Ensure frontend generated files are committed and up to date.
 Update `api-contract.yml` for check 2 an check 3
+
+
+Now we have all three checks in CI
+1. OpenAPI breaking-change check :
+Here we are checking master branch `backend/openapi.json` with pull request branch `backend/openapi.json`, so if anything changed pull request failed
+For this we are using `oasdiff/oasdiff-action/breaking@v0` which is a Github workflow for oasdiff
+
+However, not every change causes failure. Compatible changes, such as adding an optional field, may pass. Your configuration uses fail-on: WARN, so the result depends on the breaking-change rules and severity.
+
+2. Frontend type-check and build : detects frontend code that no longer matches regenerated API types.
+Here we are checking frontend code with generated api sdk, so first we run `npm run generate:api`  which will re generate `frontend\src\api\generated` foler then run `npm run build` command so it will check types and if anything changed in contract like field name changed, so typescript compile fail and we get error, so CI catch it
+
+3. Generated-file consistency check :
+Here we are comparing committed `frontend\src\api\generated` files with latest `frontend\src\api\generated` files which we generating in CI using `npm run generate:api` command, 
+So here we ensures developers haven't changed the backend contract without regenerating the frontend API files. In case frontend developer forgot to check it locally by generate `frontend\src\api\generated`, We are doing in CI
+
+> [!NOTE]
+> There is no issue in above CI or code if you website is running on a server, but right now we don't have a domain and website deployed, so check 2 and 3 will fail because `openapi-ts.config.ts` contain `input: "http://localhost:8000/openapi.json",` So Github action will fail with below error
+![Ci Failed](4.png)
+
+Now we can resolve this problem by two way
+1. Instead of `input: "http://localhost:8000/openapi.json",` use `input: "../backend/openapi.json",` as both frontend and backend in same github repository, but it will not work if both in different repos
+2. Create a Dedicated API-contract repository. this will also work fine if we have microservices project and all services have git repository. in this case backend api update API-contract repository and fontend fetch from there for generate api sdk.
+
+Backend repository — FastAPI
+
+1. Developer changes a Pydantic model or endpoint.
+
+2. Backend CI generates openapi.json from FastAPI.
+
+3. CI checks breaking changes against the base branch's specification.
+
+4. After approval, publish the updated contract as a versioned artifact or release.
+
+Frontend repository — React + TypeScript
+
+5. Download the chosen OpenAPI version.
+
+6. Run npm run generate:api.
+
+7. Run generated-file consistency checks, TypeScript checks, and the production build.
+
+
+# In case of microservices with multiple backend api
+
+Yes, exactly. In a microservices architecture, each service publishes its own `openapi.json`, and the frontend generates a separate API client for each service.
+
+For example, your project could look like this:
+
+## 1. Each microservice publishes its contract
+
+Product service
+
+Publishes `product.openapi.json`
+
+Inventory service
+
+Publishes `inventory.openapi.json`
+
+Order service
+
+Publishes `order.openapi.json`
+
+Versioned contracts consumed by the frontend
+
+Each service's own CI generates its OpenAPI specification, validates breaking changes, and publishes the approved contract version.
+
+## 2. The frontend generates clients into separate folders
+
+```
+frontend/
+├── api-contracts/
+│   ├── product.openapi.json
+│   ├── inventory.openapi.json
+│   └── order.openapi.json
+│
+└── src/api/generated/
+    ├── product/
+    │   ├── sdk.gen.ts
+    │   ├── types.gen.ts
+    │   └── zod.gen.ts
+    ├── inventory/
+    │   ├── sdk.gen.ts
+    │   ├── types.gen.ts
+    │   └── zod.gen.ts
+    └── order/
+        ├── sdk.gen.ts
+        ├── types.gen.ts
+        └── zod.gen.ts
+```
+
+You configure one generator input/output per service. For example, with Hey API, the product configuration would use:
+
+```
+input: "./api-contracts/product.openapi.json",
+output: {
+  path: "src/api/generated/product",
+},
+```
+
+The inventory and order configurations use their respective files and output directories. You can run all of them through one `npm run generate:api` script.
+
+## 3. How the frontend uses them
+
+```
+import { listProducts } from "./api/generated/product";
+import { getInventory } from "./api/generated/inventory";
+import { createOrder } from "./api/generated/order";
+```
+
+These imports are illustrative; use the actual exported operation names generated from each service's OpenAPI specification.
+
+## 4. What happens when one service changes?
+
+If inventory changes `available_quantity` to `stock_available`:
+
+1. Inventory CI detects the breaking contract change.
+2. Inventory publishes the approved new contract version.
+3. The frontend updates its inventory contract and regenerates the inventory client.
+4. TypeScript catches incompatible frontend code, provided it uses the generated types.
+5. Product and order clients don't need regeneration unless their own contracts also change.
+
+One production recommendation: if the frontend communicates with services through an API gateway, consider generating the clients from the gateway's public API contracts instead. This avoids exposing internal service endpoints directly to the browser. If the frontend legitimately calls each service directly, separate clients are still a valid approach.
