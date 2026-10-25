@@ -29,13 +29,6 @@ function getErrorMessage(error: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
-function clearServerError(field: UserField) {
-  setServerErrors((current) => ({
-    ...current,
-    [field]: undefined,
-  }));
-}
-
 export default function App() {
   const [users, setUsers] = useState<UserOut[]>([]);
   const [editingUser, setEditingUser] = useState<UserOut | null>(null);
@@ -47,6 +40,13 @@ export default function App() {
   const [serverErrors, setServerErrors] = useState<
     Partial<Record<UserField, string>>
   >({});
+
+  function clearServerError(field: UserField) {
+    setServerErrors((current) => ({
+      ...current,
+      [field]: undefined,
+    }));
+  }
 
   const loadUsers = useCallback(async () => {
     setLoading(true);

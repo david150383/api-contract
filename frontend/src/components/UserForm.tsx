@@ -2,15 +2,17 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { UserOut } from "../api/generated";
-import {
-  userCreateFormSchema,
-  type UserCreateFormValues,
-} from "../schemas/user.schema";
+import { z } from "zod";
+import { userCreateFormSchema } from "../schemas/user.schema";
 import type { UserField } from "../api/api-errors";
+
+// `is_active` has a schema default, so it is optional on input but always set on output.
+type UserFormInput = z.input<typeof userCreateFormSchema>;
+export type UserFormValues = z.output<typeof userCreateFormSchema>;
 
 type UserFormProps = {
   user?: UserOut | null;
-  onSave: (values: UserCreateFormValues) => Promise<void>;
+  onSave: (values: UserFormValues) => Promise<void>;
   onCancel: () => void;
   submitting: boolean;
   serverErrors: Partial<Record<UserField, string>>;
@@ -30,7 +32,7 @@ export default function UserForm({
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<UserCreateFormValues>({
+  } = useForm<UserFormInput, unknown, UserFormValues>({
     resolver: zodResolver(userCreateFormSchema),
     defaultValues: {
       name: "",
