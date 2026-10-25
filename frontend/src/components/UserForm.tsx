@@ -1,15 +1,16 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { UserOut } from "../api/generated";
-import { zUserCreate } from "../api/generated/zod.gen";
+import {
+  userCreateFormSchema,
+  type UserCreateFormValues,
+} from "../schemas/user.schema";
 import type { UserField } from "../api/api-errors";
-export type UserFormValues = z.infer<typeof zUserCreate>;
 
 type UserFormProps = {
   user?: UserOut | null;
-  onSave: (values: UserFormValues) => Promise<void>;
+  onSave: (values: UserCreateFormValues) => Promise<void>;
   onCancel: () => void;
   submitting: boolean;
   serverErrors: Partial<Record<UserField, string>>;
@@ -29,8 +30,8 @@ export default function UserForm({
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<UserFormValues>({
-    resolver: zodResolver(zUserCreate),
+  } = useForm<UserCreateFormValues>({
+    resolver: zodResolver(userCreateFormSchema),
     defaultValues: {
       name: "",
       email: "",
