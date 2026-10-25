@@ -160,11 +160,11 @@
       },
       "UserCreate": {
         "properties": {
-          "name": {
+          "first_name": {
             "type": "string",
             "maxLength": 100,
             "minLength": 2,
-            "title": "Name"
+            "title": "First Name"
           },
           "email": {
             "type": "string",
@@ -179,7 +179,7 @@
         },
         "type": "object",
         "required": [
-          "name",
+          "first_name",
           "email"
         ],
         "title": "UserCreate"
