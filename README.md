@@ -460,3 +460,6 @@ Note that this only works when the affected frontend code actually depends on th
 
 When you run above `npm run build` command in frontend it will show errors
 ![build Failed](3.png)
+
+## Let's do check number 3. Ensure frontend generated files are committed and up to date.
+Update `api-contract.yml` for check 2 an check 3
