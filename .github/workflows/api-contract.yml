@@ -1,0 +1,26 @@
+name: API Contract
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  breaking-changes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect breaking API changes
+        uses: oasdiff/oasdiff-action/breaking@v0
+        with:
+          base: "origin/${{ github.base_ref }}:backend/openapi.json"
+          revision: "HEAD:backend/openapi.json"
+          fail-on: WARN
+          review: false

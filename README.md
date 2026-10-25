@@ -308,3 +308,112 @@ export type UserCreateFormValues = z.infer<typeof userCreateFormSchema>;
 | Submit invalid data directly to the API | FastAPI still validates it independently                         |
 
 One important distinction: OpenAPI can only generate rules represented in the API contract. Custom Pydantic validators aren't necessarily represented in OpenAPI, so some backend validation logic may still need separate frontend rules if you want equivalent early feedback.
+
+
+# Git branch : api-contract-drift-detection
+API contract drift detection: if the backend changes an API in a way that breaks the frontend contract, CI should detect it before the change is merged or deployed.
+
+For your FastAPI + React + TypeScript project, I recommend using three complementary checks:
+
+1. OpenAPI breaking-change check — detects changes such as `name` becoming `first_name`.
+2. Frontend type-check and build — detects frontend code that no longer matches regenerated API types.
+3. Generated-file consistency check — ensures developers haven't changed the backend contract without regenerating the frontend API files.
+
+These checks solve different problems, so using all three gives you stronger protection.
+
+## 1. First, keep a versioned OpenAPI contract
+
+Add a snapshot of the API specification to your repository, for example:
+
+Generate `backend/openapi.json` from your FastAPI app and commit it. The exact command depends on your Python package's entry point; for example, if your FastAPI instance is `app` in `app/main.py`:
+Also make sure you have virtual environment activated in backend folder before running command.
+
+```
+cd backend
+
+python -c "import json; from app.main import app; print(json.dumps(app.openapi(), indent=2))" > openapi.json
+```
+Above command will create openapi.json file in backend folder as per current python code and rules
+
+This file becomes the version-controlled contract baseline. When you intentionally change an endpoint or schema, regenerate it and review the changes.
+
+## 2. Detect breaking API changes with `oasdiff`
+
+The open-source tool oasdiff compares two OpenAPI specifications and identifies changes that may break existing clients.
+
+Add a GitHub Actions workflow at `.github/workflows/api-contract.yml`:
+
+```
+name: API Contract
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  breaking-changes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect breaking API changes
+        uses: oasdiff/oasdiff-action/breaking@v0
+        with:
+          base: "origin/${{ github.base_ref }}:backend/openapi.json"
+          revision: "HEAD:backend/openapi.json"
+          fail-on: WARN
+          review: false
+
+```
+This compares the contract in the pull request with the contract on its target branch. If it finds a breaking change at the configured severity, the check fails. `review: false` disables uploading the comparison to the hosted review service.
+
+## 3. What happens if `name` becomes `first_name`?
+
+Suppose the original backend schema is:
+
+```
+class UserCreate(BaseModel):    
+    name: str    
+    email: EmailStr
+```
+
+A developer changes it to:
+
+```
+class UserCreate(BaseModel):    
+    first_name: str    
+    email: EmailStr
+```
+
+The expected workflow is:
+
+1\. Developer changes FastAPI
+
+The `name` property is removed and `first_name` is introduced.
+
+2\. OpenAPI snapshot changes
+
+The regenerated `backend/openapi.json` describes the new contract.
+
+3\. Breaking-change check runs
+
+CI flags removal of the old property if it is a breaking change under the contract comparison rules.
+
+4\. Developer resolves the change
+
+Either preserve backward compatibility or intentionally coordinate the API and frontend changes, with explicit review of the breaking change.
+
+A critical detail: the backend developer must regenerate and commit the OpenAPI snapshot. Otherwise, the breaking-change check compares two unchanged files and cannot see the change in the Python code.
+
+> [!NOTE]
+> This is a regenerate and commit approach, so master branch already have a openapi.json snapshop, Now when a developer change anything he need to regenerate openapi again using above python command then commit it, now CI will compare openapi.json with master branch and it something break it will fail
+>
+> We can also automate this in CI. CI can generate the old contract from the base branch and the new contract from the pull request, then compare them. That removes the need to maintain a committed snapshot, but requires checking out and running both versions of the backend.
+> **My recommendation:** start with a committed openapi.json because it's straightforward to review in pull requests. Automate the freshness check in CI, and use a local generation command to make updates easy.
