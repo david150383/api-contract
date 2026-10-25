@@ -39,7 +39,7 @@ def create_user(
     db: Session = Depends(get_db),
 ):
     user = User(
-        name=payload.name,
+        first_name=payload.first_name,
         email=str(payload.email),
     )
 
@@ -73,7 +73,7 @@ def update_user(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user.name = payload.name
+    user.first_name = payload.first_name
     user.email = str(payload.email)
     user.is_active = payload.is_active
 
