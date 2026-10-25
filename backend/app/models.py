@@ -13,7 +13,7 @@ class User(Base):
         index=True,
     )
 
-    name: Mapped[str] = mapped_column(
+    first_name: Mapped[str] = mapped_column(
         String(100),
         nullable=False,
     )
