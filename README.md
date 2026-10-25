@@ -417,3 +417,23 @@ A critical detail: the backend developer must regenerate and commit the OpenAPI 
 >
 > We can also automate this in CI. CI can generate the old contract from the base branch and the new contract from the pull request, then compare them. That removes the need to maintain a committed snapshot, but requires checking out and running both versions of the backend.
 > **My recommendation:** start with a committed openapi.json because it's straightforward to review in pull requests. Automate the freshness check in CI, and use a local generation command to make updates easy.
+
+### Let's see this in action
+1. create a test branch
+2. Update `backend/app/schemas.py` to change name to first_name
+```
+class UserCreate(BaseModel):
+    first_name: str = Field(min_length=2, max_length=100)
+```
+3. Re-Generate `backend/openapi.json` 
+```
+cd backend
+
+python -c "import json; from app.main import app; print(json.dumps(app.openapi(), indent=2))" > openapi.json
+```
+4. Commit changes and push test branch and create a Pull Request
+
+Once you create pull request for master, Github action Ci get started and fail due to conflict in master openapi.json and test branch openapi.json
+![Ci Failed](1.png)
+
+![Ci Failed](2.png)
