@@ -331,7 +331,7 @@ Also make sure you have virtual environment activated in backend folder before r
 ```
 cd backend
 
-python -c "import json; from app.main import app; print(json.dumps(app.openapi(), indent=2))" > openapi.json
+python3 -c "import json; from app.main import app; print(json.dumps(app.openapi(), indent=2))" > openapi.json
 ```
 Above command will create openapi.json file in backend folder as per current python code and rules
 
@@ -586,3 +586,190 @@ If inventory changes `available_quantity` to `stock_available`:
 5. Product and order clients don't need regeneration unless their own contracts also change.
 
 One production recommendation: if the frontend communicates with services through an API gateway, consider generating the clients from the gateway's public API contracts instead. This avoids exposing internal service endpoints directly to the browser. If the frontend legitimately calls each service directly, separate clients are still a valid approach.
+
+# Git branch : api-contract-more-rules
+We'll introduce the rules in stages:
+1. **OpenAPI linting:** enforce API naming conventions and basic contract quality.
+2. **Request/response consistency:** validate fields such as phoneNumber, isActive, and pageSize.
+3. **Database naming:** keep SQLAlchemy/Python attributes in snake_case while exposing API properties in camelCase.
+4. **CI enforcement:** fail GitHub Actions when the OpenAPI contract violates these rules.
+
+One important distinction: Spectral can inspect your OpenAPI document, but it cannot automatically see SQLAlchemy database column definitions from that document. We'll enforce API rules in Spectral and handle database naming separately.
+
+1. Updated backend `FastAPI` code for  add a new `phone_number` field, also added some other code for camelCase response and request, tags, proper error and response structure
+2. Re-Generate `backend/openapi.json` by running below command in backend folder .
+```
+cd backend
+
+python3 -c "import json; from app.main import app; print(json.dumps(app.openapi(), indent=2))" > openapi.json
+```
+3. Re Generate frontend api sdk using below command:
+```
+npm run generate:api
+```
+4. Updated frontend react code to add phoneNumber field and use updated typescript types.
+
+So now we have frontend and backend sync and updated
+
+
+Let's add blow  API contract rules to check:
+- operationId is required and uses camelCase.
+- Schema property names use camelCase, including the nested-schema rule.
+- Parameter names use camelCase.
+- Every operation has a summary and at least one tag.
+- Operation descriptions are recommended through warnings.
+- Standard OpenAPI rules remain enabled through spectral:oas.
+
+1. Install Spectral in frontend
+```
+npm install --save-dev @stoplight/spectral-cli
+```
+2. Create `.spectral.yaml` in root folder with rules
+3. Add a lint command in frontend `package.json` scripts
+```
+{
+  "scripts": {
+    "lint:api": "spectral lint openapi.json --ruleset .spectral.yaml"
+  }
+}
+```
+
+Let's test it
+Now if you run `npm run lint:api` in frontend command it will not show any error right now
+```
+npm run lint:api
+
+> frontend@0.0.0 lint:api
+> spectral lint ../backend/openapi.json --ruleset ../.spectral.yaml
+
+No results with a severity of 'error' found!
+```
+Now if you change anything which note as per above given rules `npm run lint:api` will throw error.
+but make sure `backend/openapi.json` and frontend api sdk ReGenerated
+
+Let's implement remaining pieces now:
+
+1. Database naming test: ensure SQLAlchemy table and column names follow `snake_case`.
+2. GitHub Actions CI: automatically run the database test and your existing Spectral contract lint whenever code is pushed or a pull request is opened.
+
+We'll keep your existing FastAPI and React structure unchanged.
+
+## Step 1 — Add the database naming test
+
+Create this file:
+
+`backend/tests/test_database_naming.py`
+
+### What does this test enforce?
+
+For example, these names pass:
+
+| Database name  | Result |
+| -------------- | ------ |
+| `users`        | Pass   |
+| `phone_number` | Pass   |
+| `is_active`    | Pass   |
+| `created_at`   | Pass   |
+| `phoneNumber`  | Fail   |
+| `isActive`     | Fail   |
+| `UserProfile`  | Fail   |
+
+The test inspects SQLAlchemy's registered metadata, including the actual database column names (`column.name`), rather than just checking Python attribute names.
+
+Importantly, it imports your models directly instead of importing `app.main`. This avoids running the application's `Base.metadata.create_all()` initialization just to test naming conventions.
+
+## Step 2 — Run the test locally
+
+From your repository root:
+
+```
+cd backend
+python -m pip install pytest
+python -m pytest tests/test_database_naming.py -v
+```
+
+If your project uses a virtual environment, activate it first.
+
+You should see two passing tests, provided your current model metadata follows the naming convention.
+
+## Step 3 — Add GitHub Actions CI
+
+Create this workflow at your repository root:
+
+`.github/workflows/api-contract.yml`
+
+```
+
+name: API Contract Checks
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  database-naming:
+    name: Database Naming Convention
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pytest
+
+      - name: Check database naming conventions
+        working-directory: backend
+        run: python -m pytest tests/test_database_naming.py -v
+
+  openapi-lint:
+    name: OpenAPI Contract Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint OpenAPI contract
+        working-directory: frontend
+        run: npm run lint:api
+
+```
+
+This assumes `backend/requirements.txt` and `frontend/package-lock.json` exist in your repository. Adjust those paths if your project uses different dependency files.
+
+## Step 4 — Understand what CI now protects
+
+Job 1: Database naming
+
+Checks SQLAlchemy table and column names. A violation fails the job.
+
+Job 2: OpenAPI lint
+
+Checks your committed OpenAPI document against Spectral's built-in rules and your custom rules.
+
+Once committed and pushed, you can see both checks in the GitHub Actions run. You can also configure branch protection to require both jobs to pass before merging.

@@ -1,0 +1,84 @@
+
+extends:
+  - spectral:oas
+
+rules:
+  # Every operation must have an operationId.
+  operation-operationId:
+    description: Every API operation must define an operationId.
+    given: "$.paths[*][get,put,post,delete,patch,options,head,trace]"
+    severity: error
+    then:
+      field: operationId
+      function: truthy
+
+  # Operation IDs must use camelCase.
+  api-operation-id-camel-case:
+    description: Operation IDs must use camelCase.
+    message: "{{property}} must use camelCase."
+    given: "$.paths[*][get,put,post,delete,patch,options,head,trace].operationId"
+    severity: error
+    then:
+      function: casing
+      functionOptions:
+        type: camel
+
+  # Schema property names must use camelCase.
+  api-schema-properties-camel-case:
+    description: Schema property names must use camelCase.
+    message: "{{property}} must use camelCase."
+    given: "$.components.schemas.*.properties.*~"
+    severity: error
+    then:
+      function: casing
+      functionOptions:
+        type: camel
+
+  # Nested schema property names must use camelCase.
+  api-nested-schema-properties-camel-case:
+    description: Nested schema properties must use camelCase.
+    message: "{{property}} must use camelCase."
+    given: "$.components.schemas..properties.*~"
+    severity: error
+    then:
+      function: casing
+      functionOptions:
+        type: camel
+
+  # Parameter names must use camelCase.
+  api-parameter-names-camel-case:
+    description: API parameter names must use camelCase.
+    message: "{{property}} must use camelCase."
+    given: "$.paths.*.*.parameters[*].name"
+    severity: error
+    then:
+      function: casing
+      functionOptions:
+        type: camel
+
+  # Every operation must have a summary.
+  api-operation-summary:
+    description: Every API operation must have a summary.
+    given: "$.paths[*][get,put,post,delete,patch,options,head,trace]"
+    severity: error
+    then:
+      field: summary
+      function: truthy
+
+  # Every operation must have at least one tag.
+  api-operation-tags:
+    description: Every API operation must have at least one tag.
+    given: "$.paths[*][get,put,post,delete,patch,options,head,trace]"
+    severity: error
+    then:
+      field: tags
+      function: truthy
+
+  # Operations should document their behavior.
+  api-operation-description:
+    description: API operations should have descriptions.
+    given: "$.paths[*][get,put,post,delete,patch,options,head,trace]"
+    severity: warn
+    then:
+      field: description
+      function: truthy

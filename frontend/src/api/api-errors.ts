@@ -1,4 +1,4 @@
-export type UserField = "name" | "email" | "is_active";
+export type UserField = "name" | "email" | "phoneNumber" | "isActive";
 
 export type ApiErrorDetails = {
   message: string;
@@ -15,45 +15,41 @@ export function parseApiError(error: unknown): ApiErrorDetails {
     return result;
   }
 
-  const detail = "detail" in error ? error.detail : undefined;
-
-  if (typeof detail === "string") {
-    result.message = detail;
-    return result;
+  if ("message" in error && typeof error.message === "string") {
+    result.message = error.message;
   }
 
-  if (Array.isArray(detail)) {
-    const messages: string[] = [];
+  if ("detail" in error) {
+    const detail = error.detail;
 
-    for (const item of detail) {
-      if (!item || typeof item !== "object") continue;
+    if (typeof detail === "string") {
+      result.message = detail;
+    }
 
-      const message =
-        "msg" in item && typeof item.msg === "string" ? item.msg : undefined;
+    if (Array.isArray(detail)) {
+      for (const item of detail) {
+        if (!item || typeof item !== "object") continue;
 
-      const loc = "loc" in item ? item.loc : undefined;
+        const message =
+          "msg" in item && typeof item.msg === "string" ? item.msg : undefined;
 
-      if (!message) continue;
+        const loc = "loc" in item ? item.loc : undefined;
 
-      if (Array.isArray(loc)) {
+        if (!message || !Array.isArray(loc)) continue;
+
         const field = loc.find(
           (part): part is UserField =>
-            part === "name" || part === "email" || part === "is_active",
+            part === "name" ||
+            part === "email" ||
+            part === "phoneNumber" ||
+            part === "isActive",
         );
 
         if (field && !result.fieldErrors[field]) {
           result.fieldErrors[field] = message;
         }
       }
-
-      messages.push(message);
     }
-
-    if (messages.length > 0) {
-      result.message = messages.join(" ");
-    }
-
-    return result;
   }
 
   return result;

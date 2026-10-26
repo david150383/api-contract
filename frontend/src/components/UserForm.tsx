@@ -3,12 +3,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { UserOut } from "../api/generated";
 import { z } from "zod";
-import { userCreateFormSchema } from "../schemas/user.schema";
+import { userUpdateFormSchema } from "../schemas/user.schema";
 import type { UserField } from "../api/api-errors";
 
 // `is_active` has a schema default, so it is optional on input but always set on output.
-type UserFormInput = z.input<typeof userCreateFormSchema>;
-export type UserFormValues = z.output<typeof userCreateFormSchema>;
+type UserFormInput = z.input<typeof userUpdateFormSchema>;
+export type UserFormValues = z.output<typeof userUpdateFormSchema>;
 
 type UserFormProps = {
   user?: UserOut | null;
@@ -33,11 +33,12 @@ export default function UserForm({
     reset,
     formState: { errors },
   } = useForm<UserFormInput, unknown, UserFormValues>({
-    resolver: zodResolver(userCreateFormSchema),
+    resolver: zodResolver(userUpdateFormSchema),
     defaultValues: {
       name: "",
       email: "",
-      is_active: true,
+      phoneNumber: "",
+      isActive: true,
     },
   });
 
@@ -45,7 +46,8 @@ export default function UserForm({
     reset({
       name: user?.name ?? "",
       email: user?.email ?? "",
-      is_active: user?.is_active ?? true,
+      phoneNumber: user?.phoneNumber ?? "",
+      isActive: user?.isActive ?? true,
     });
   }, [user, reset]);
 
@@ -86,18 +88,35 @@ export default function UserForm({
         )}
       </div>
 
+      <div className="form-field">
+        <label htmlFor="phoneNumber">Phone Number</label>
+        <input
+          id="phoneNumber"
+          type="tel"
+          {...register("phoneNumber", {
+            onChange: () => onClearServerError("phoneNumber"),
+          })}
+          aria-invalid={Boolean(errors.phoneNumber || serverErrors.phoneNumber)}
+        />
+        {(errors.phoneNumber?.message || serverErrors.phoneNumber) && (
+          <p className="field-error">
+            {errors.phoneNumber?.message ?? serverErrors.phoneNumber}
+          </p>
+        )}
+      </div>
+
       <label className="checkbox-field">
         <input
           type="checkbox"
-          {...register("is_active", {
-            onChange: () => onClearServerError("is_active"),
+          {...register("isActive", {
+            onChange: () => onClearServerError("isActive"),
           })}
         />
         Active user
       </label>
 
-      {serverErrors.is_active && (
-        <p className="field-error">{serverErrors.is_active}</p>
+      {serverErrors.isActive && (
+        <p className="field-error">{serverErrors.isActive}</p>
       )}
 
       <div className="form-actions">

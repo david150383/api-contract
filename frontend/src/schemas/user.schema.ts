@@ -1,9 +1,8 @@
 import { z } from "zod";
 import { zUserCreate } from "../api/generated/zod.gen";
 
-// Start with backend-generated validation.
-export const userCreateFormSchema = zUserCreate.extend({
-  // Frontend-only validation for a better user experience.
+// Shared validation for create and update forms.
+const userBaseFormSchema = zUserCreate.extend({
   name: z
     .string()
     .trim()
@@ -14,4 +13,13 @@ export const userCreateFormSchema = zUserCreate.extend({
     ),
 });
 
-export type UserCreateFormValues = z.infer<typeof userCreateFormSchema>;
+// Update requires isActive, while create lets the backend set it.
+export const userCreateFormSchema = userBaseFormSchema;
+
+export const userUpdateFormSchema = userBaseFormSchema.extend({
+  isActive: z.boolean(),
+});
+
+export type UserCreateFormValues = z.output<typeof userCreateFormSchema>;
+
+export type UserUpdateFormValues = z.output<typeof userUpdateFormSchema>;

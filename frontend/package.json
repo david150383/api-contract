@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "generate:api": "openapi-ts"
+    "generate:api": "openapi-ts",
+    "lint:api": "spectral lint ../backend/openapi.json --ruleset ../.spectral.yaml"
   },
   "dependencies": {
     "@hey-api/client-fetch": "^0.13.1",
@@ -21,6 +22,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@hey-api/openapi-ts": "^0.99.0",
+    "@stoplight/spectral-cli": "^6.17.0",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",

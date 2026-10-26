@@ -3,13 +3,27 @@
 import * as z from 'zod';
 
 /**
+ * ErrorResponse
+ */
+export const zErrorResponse = z.object({
+    errorCode: z.string(),
+    message: z.string()
+});
+
+/**
  * UserCreate
  */
 export const zUserCreate = z.object({
     name: z.string().min(2).max(100),
     email: z.email(),
-    is_active: z.boolean().optional().default(true)
+    isActive: z.boolean().optional().default(true),
+    phoneNumber: z.string().min(8).max(20).nullish()
 });
+
+/**
+ * UserRole
+ */
+export const zUserRole = z.enum(['user', 'admin']);
 
 /**
  * UserOut
@@ -18,7 +32,21 @@ export const zUserOut = z.object({
     id: z.int(),
     name: z.string(),
     email: z.email(),
-    is_active: z.boolean()
+    isActive: z.boolean(),
+    phoneNumber: z.string().nullable(),
+    role: zUserRole,
+    createdAt: z.iso.datetime(),
+    updatedAt: z.iso.datetime()
+});
+
+/**
+ * UserListResponse
+ */
+export const zUserListResponse = z.object({
+    items: z.array(zUserOut),
+    page: z.int(),
+    pageSize: z.int(),
+    total: z.int()
 });
 
 /**
@@ -27,7 +55,8 @@ export const zUserOut = z.object({
 export const zUserUpdate = z.object({
     name: z.string().min(2).max(100),
     email: z.email(),
-    is_active: z.boolean()
+    isActive: z.boolean(),
+    phoneNumber: z.string().min(8).max(20).nullish()
 });
 
 /**
@@ -48,12 +77,15 @@ export const zHttpValidationError = z.object({
     detail: z.array(zValidationError).optional()
 });
 
+export const zListUsersQuery = z.object({
+    page: z.int().gte(1).optional().default(1),
+    pageSize: z.int().gte(1).lte(100).optional().default(20)
+});
+
 /**
- * Response Listusers
- *
  * Successful Response
  */
-export const zListUsersResponse = z.array(zUserOut);
+export const zListUsersResponse = zUserListResponse;
 
 export const zCreateUserBody = zUserCreate;
 
@@ -63,18 +95,18 @@ export const zCreateUserBody = zUserCreate;
 export const zCreateUserResponse = zUserOut;
 
 export const zDeleteUserPath = z.object({
-    user_id: z.int()
+    userId: z.int().gte(1)
 });
 
 /**
- * Successful Response
+ * User deleted successfully
  */
 export const zDeleteUserResponse = z.void();
 
 export const zUpdateUserBody = zUserUpdate;
 
 export const zUpdateUserPath = z.object({
-    user_id: z.int()
+    userId: z.int().gte(1)
 });
 
 /**

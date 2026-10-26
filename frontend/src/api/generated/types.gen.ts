@@ -5,6 +5,20 @@ export type ClientOptions = {
 };
 
 /**
+ * ErrorResponse
+ */
+export type ErrorResponse = {
+    /**
+     * Errorcode
+     */
+    errorCode: string;
+    /**
+     * Message
+     */
+    message: string;
+};
+
+/**
  * HTTPValidationError
  */
 export type HttpValidationError = {
@@ -27,9 +41,35 @@ export type UserCreate = {
      */
     email: string;
     /**
-     * Is Active
+     * Isactive
      */
-    is_active?: boolean;
+    isActive?: boolean;
+    /**
+     * Phonenumber
+     */
+    phoneNumber?: string | null;
+};
+
+/**
+ * UserListResponse
+ */
+export type UserListResponse = {
+    /**
+     * Items
+     */
+    items: Array<UserOut>;
+    /**
+     * Page
+     */
+    page: number;
+    /**
+     * Pagesize
+     */
+    pageSize: number;
+    /**
+     * Total
+     */
+    total: number;
 };
 
 /**
@@ -49,10 +89,28 @@ export type UserOut = {
      */
     email: string;
     /**
-     * Is Active
+     * Isactive
      */
-    is_active: boolean;
+    isActive: boolean;
+    /**
+     * Phonenumber
+     */
+    phoneNumber: string | null;
+    role: UserRole;
+    /**
+     * Createdat
+     */
+    createdAt: string;
+    /**
+     * Updatedat
+     */
+    updatedAt: string;
 };
+
+/**
+ * UserRole
+ */
+export type UserRole = 'user' | 'admin';
 
 /**
  * UserUpdate
@@ -67,9 +125,13 @@ export type UserUpdate = {
      */
     email: string;
     /**
-     * Is Active
+     * Isactive
      */
-    is_active: boolean;
+    isActive: boolean;
+    /**
+     * Phonenumber
+     */
+    phoneNumber?: string | null;
 };
 
 /**
@@ -103,17 +165,33 @@ export type ValidationError = {
 export type ListUsersData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Pagesize
+         */
+        pageSize?: number;
+    };
     url: '/users';
 };
 
+export type ListUsersErrors = {
+    /**
+     * Unprocessable Content
+     */
+    422: ErrorResponse;
+};
+
+export type ListUsersError = ListUsersErrors[keyof ListUsersErrors];
+
 export type ListUsersResponses = {
     /**
-     * Response Listusers
-     *
      * Successful Response
      */
-    200: Array<UserOut>;
+    200: UserListResponse;
 };
 
 export type ListUsersResponse = ListUsersResponses[keyof ListUsersResponses];
@@ -127,9 +205,13 @@ export type CreateUserData = {
 
 export type CreateUserErrors = {
     /**
-     * Validation Error
+     * Conflict
      */
-    422: HttpValidationError;
+    409: ErrorResponse;
+    /**
+     * Unprocessable Content
+     */
+    422: ErrorResponse;
 };
 
 export type CreateUserError = CreateUserErrors[keyof CreateUserErrors];
@@ -147,15 +229,19 @@ export type DeleteUserData = {
     body?: never;
     path: {
         /**
-         * User Id
+         * Userid
          */
-        user_id: number;
+        userId: number;
     };
     query?: never;
-    url: '/users/{user_id}';
+    url: '/users/{userId}';
 };
 
 export type DeleteUserErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
     /**
      * Validation Error
      */
@@ -166,7 +252,7 @@ export type DeleteUserError = DeleteUserErrors[keyof DeleteUserErrors];
 
 export type DeleteUserResponses = {
     /**
-     * Successful Response
+     * User deleted successfully
      */
     204: void;
 };
@@ -177,19 +263,27 @@ export type UpdateUserData = {
     body: UserUpdate;
     path: {
         /**
-         * User Id
+         * Userid
          */
-        user_id: number;
+        userId: number;
     };
     query?: never;
-    url: '/users/{user_id}';
+    url: '/users/{userId}';
 };
 
 export type UpdateUserErrors = {
     /**
-     * Validation Error
+     * Not Found
      */
-    422: HttpValidationError;
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Unprocessable Content
+     */
+    422: ErrorResponse;
 };
 
 export type UpdateUserError = UpdateUserErrors[keyof UpdateUserErrors];

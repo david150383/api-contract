@@ -59,7 +59,7 @@ export default function App() {
         throw new Error(getErrorMessage(response.error));
       }
 
-      setUsers(response.data ?? []);
+      setUsers(response.data?.items ?? []);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
@@ -80,11 +80,15 @@ export default function App() {
     try {
       const response = editingUser
         ? await updateUser({
-            path: { user_id: editingUser.id },
+            path: { userId: editingUser.id },
             body: values,
           })
         : await createUser({
-            body: values,
+            body: {
+              name: values.name,
+              email: values.email,
+              phoneNumber: values.phoneNumber,
+            },
           });
 
       if (response.error) {
@@ -127,7 +131,7 @@ export default function App() {
 
     try {
       const response = await deleteUserApi({
-        path: { user_id: user.id },
+        path: { userId: user.id },
       });
 
       if (response.error) {
@@ -229,10 +233,10 @@ export default function App() {
                     <td>
                       <span
                         className={
-                          user.is_active ? "status active" : "status inactive"
+                          user.isActive ? "status active" : "status inactive"
                         }
                       >
-                        {user.is_active ? "Active" : "Inactive"}
+                        {user.isActive ? "Active" : "Inactive"}
                       </span>
                     </td>
                     <td>
