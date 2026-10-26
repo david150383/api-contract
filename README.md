@@ -773,3 +773,27 @@ Job 2: OpenAPI lint
 Checks your committed OpenAPI document against Spectral's built-in rules and your custom rules.
 
 Once committed and pushed, you can see both checks in the GitHub Actions run. You can also configure branch protection to require both jobs to pass before merging.
+
+
+### Fix CI 
+Right now in `openapi-ts.config.ts` input is "http://localhost:8000/openapi.json" that's why CI failed for fetch openapi.json, so let's fix it 
+Update `frontend\openapi-ts.config.ts` 
+```
+import { defineConfig } from "@hey-api/openapi-ts";
+
+export default defineConfig({
+  input: "../backend/openapi.json",
+  output: {
+    path: "src/api/generated",
+  },
+  plugins: [
+    {
+      name: "@hey-api/client-fetch",
+      baseUrl: "http://localhost:8000",
+    },
+    "@hey-api/typescript",
+    "@hey-api/sdk",
+    "zod",
+  ],
+});
+```
